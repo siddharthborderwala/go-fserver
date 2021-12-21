@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"time"
 
+	gohandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -32,9 +33,12 @@ func main() {
 	// create a new serve mux and register the handlers
 	sm := mux.NewRouter()
 
+	ch := gohandlers.CORS(gohandlers.AllowedOrigins([]string{"*"}))
+
 	// post method handler
 	ph := sm.Methods(http.MethodPost).Subrouter()
-	ph.Handle("/images/{id:[0-9]+}/{filename:[a-zA-Z]+.[a-z]{3}}", fh)
+	ph.HandleFunc("/images/{id:[0-9]+}/{filename:[a-zA-Z]+.[a-z]{3}}", fh.UploadRest)
+	ph.HandleFunc("/", fh.UploadMultipart)
 
 	// get method handler
 	gh := sm.Methods(http.MethodGet).Subrouter()
@@ -45,7 +49,7 @@ func main() {
 
 	s := http.Server{
 		Addr:         BIND_ADDRESS,
-		Handler:      sm,
+		Handler:      ch(sm),
 		ErrorLog:     logger,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
